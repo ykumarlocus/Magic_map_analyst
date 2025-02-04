@@ -27,25 +27,38 @@ def load_data():
 
 df = load_data()
 
-# Function to process user queries using OpenAI API
+# Function to process user queries using OpenAI API, with real data calculations
 def query_insights(user_query, df):
     """
-    Uses OpenAI's GPT-4 to process queries related to order data.
+    Uses OpenAI's GPT-4 to provide real insights based on calculated values.
     """
     if df.empty:
         return "Error: No data loaded. Please check if the dataset is available."
 
+    # Precompute key statistics from the dataset
+    total_orders = df.shape[0]
+    completed_orders = df[df["Terminal STATUS"] == "COMPLETED"].shape[0] if "Terminal STATUS" in df.columns else "N/A"
+    cancelled_orders = df[df["Terminal STATUS"] == "CANCELLED"].shape[0] if "Terminal STATUS" in df.columns else "N/A"
+
+    top_city = df["CITY"].value_counts().idxmax() if "CITY" in df.columns else "N/A"
+    top_state = df["STATE"].value_counts().idxmax() if "STATE" in df.columns else "N/A"
+
+    common_cancellation_reason = df["Cancellation REASON DESCRIPTION"].value_counts().idxmax() if "Cancellation REASON DESCRIPTION" in df.columns else "N/A"
+
+    # Create a context summary with real computed values
     context = f"""
-    You are an AI assistant analyzing order data. The dataset contains order information with the following columns:
-    {', '.join(df.columns)}.
+    You are an AI assistant analyzing order data. Based on the dataset provided:
 
-    Here is a small sample of the dataset:
-    {df.head(5).to_string()}
+    - Total Orders: {total_orders}
+    - Completed Orders: {completed_orders}
+    - Cancelled Orders: {cancelled_orders}
+    - Top City for Orders: {top_city}
+    - Top State for Orders: {top_state}
+    - Most Common Cancellation Reason: {common_cancellation_reason}
 
-    The user has asked the following question:
-    {user_query}
+    User Question: {user_query}
 
-    Please answer based on the dataset, and if necessary, suggest calculations or insights.
+    Provide a helpful, natural language response based on the above data. Format the response like a human-written answer.
     """
 
     try:
