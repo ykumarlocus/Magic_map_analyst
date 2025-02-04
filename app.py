@@ -42,8 +42,15 @@ def query_insights(user_query, df):
 
     top_city = df["CITY"].value_counts().idxmax() if "CITY" in df.columns else "N/A"
     top_state = df["STATE"].value_counts().idxmax() if "STATE" in df.columns else "N/A"
-
     common_cancellation_reason = df["Cancellation REASON DESCRIPTION"].value_counts().idxmax() if "Cancellation REASON DESCRIPTION" in df.columns else "N/A"
+
+    # Calculate the longest SLA time for a successfully delivered order
+    if "Order Date" in df.columns and "COMPLETED AT" in df.columns:
+        df["SLA_Time"] = (df["COMPLETED AT"] - df["Order Date"]).dt.total_seconds() / 3600  # Convert to hours
+        longest_sla = df["SLA_Time"].max()
+        longest_sla = round(longest_sla, 2) if pd.notna(longest_sla) else "N/A"
+    else:
+        longest_sla = "N/A"
 
     # Create a context summary with real computed values
     context = f"""
@@ -55,6 +62,7 @@ def query_insights(user_query, df):
     - Top City for Orders: {top_city}
     - Top State for Orders: {top_state}
     - Most Common Cancellation Reason: {common_cancellation_reason}
+    - Longest SLA (Service Level Agreement) Time for a Successfully Delivered Order: {longest_sla} hours
 
     User Question: {user_query}
 
