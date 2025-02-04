@@ -124,7 +124,7 @@ if st.button("Get Answer"):
         # Get Human Explanation via OpenAI
         explanation = explain_result(user_query, computed_result)
 
-        st.subheader("✅ Final Answer in Natural Language")
+        st.subheader("✅ Analyst take on the query")
         st.write(explanation)
     else:
         st.write("Please enter a valid question.")
