@@ -4,7 +4,7 @@ import openai
 import matplotlib.pyplot as plt
 
 # Load OpenAI API Key from Streamlit Secrets
-openai.api_key = st.secrets["Osk-proj-Vc4ZS9Q6RV6G4Q252l22MXfkpZwUnHlcoNG2iwe9PBv6y4zLdXN4klCTjFNBefENYQjBt-7XqtT3BlbkFJbo88EjucohIZPaOdg1saNGKnwl_C5IHxoY1A6XLVNySFXEV3NoXS6jZMuh-qy5qOyzWNIrZroAPENAI_API_KEY"]
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Load the dataset
 @st.cache_data
