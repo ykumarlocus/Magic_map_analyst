@@ -15,7 +15,7 @@ def load_data():
         df = pd.read_csv(file_path)
 
         # Convert date columns to datetime if they exist
-        date_columns = ["Order Date", "COMPLETED AT", "CANCELLED AT"]
+        date_columns = ["Order Date", "COMPLETED AT", "CANCELLED AT", "RETURN COMPLETED AT", "IN TRANSIT AT", "PICKED UP AT"]
         for col in date_columns:
             if col in df.columns:
                 df[col] = pd.to_datetime(df[col], errors='coerce')
@@ -27,70 +27,77 @@ def load_data():
 
 df = load_data()
 
-# Function to process user queries using OpenAI API, with real data calculations
-def query_insights(user_query, df):
+# Function to convert user query into Python calculations
+def generate_python_code(user_query, df):
     """
-    Uses OpenAI's GPT-4 to provide real insights based on calculated values.
+    Uses OpenAI API to convert the user query into a Python calculation.
     """
-    if df.empty:
-        return "Error: No data loaded. Please check if the dataset is available."
-
-    # Precompute key statistics from the dataset
-    total_orders = df.shape[0]
-    completed_orders = df[df["Terminal STATUS"] == "COMPLETED"].shape[0] if "Terminal STATUS" in df.columns else "N/A"
-    cancelled_orders = df[df["Terminal STATUS"] == "CANCELLED"].shape[0] if "Terminal STATUS" in df.columns else "N/A"
-
-    top_city = df["CITY"].value_counts().idxmax() if "CITY" in df.columns else "N/A"
-    top_state = df["STATE"].value_counts().idxmax() if "STATE" in df.columns else "N/A"
-    common_cancellation_reason = df["Cancellation REASON DESCRIPTION"].value_counts().idxmax() if "Cancellation REASON DESCRIPTION" in df.columns else "N/A"
-
-    # Calculate the longest SLA time for a successfully delivered order
-    if "Order Date" in df.columns and "COMPLETED AT" in df.columns:
-        df["SLA_Time"] = (df["COMPLETED AT"] - df["Order Date"]).dt.total_seconds() / 3600  # Convert to hours
-        longest_sla = df["SLA_Time"].max()
-        longest_sla = round(longest_sla, 2) if pd.notna(longest_sla) else "N/A"
-    else:
-        longest_sla = "N/A"
-
-    # Create a context summary with real computed values
     context = f"""
-    You are an AI assistant analyzing order data. Based on the dataset provided:
+    You are a Python expert. Convert the following user query into a Python function
+    that can process the given order dataset.
 
-    - Total Orders: {total_orders}
-    - Completed Orders: {completed_orders}
-    - Cancelled Orders: {cancelled_orders}
-    - Top City for Orders: {top_city}
-    - Top State for Orders: {top_state}
-    - Most Common Cancellation Reason: {common_cancellation_reason}
-    - Longest SLA (Service Level Agreement) Time for a Successfully Delivered Order: {longest_sla} hours
+    Dataset Columns:
+    {', '.join(df.columns)}
 
-    User Question: {user_query}
+    Sample Data:
+    {df.head(5).to_string()}
 
-    Provide a helpful, natural language response based on the above data. Format the response like a human-written answer.
+    User Query:
+    {user_query}
+
+    Output a Python function that calculates the answer based on Pandas.
     """
-
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a data analyst providing insights on order data."},
+                {"role": "system", "content": "You are a Python data expert who writes optimized Pandas queries."},
                 {"role": "user", "content": context}
             ]
         )
-        return response['choices'][0]['message']['content'].strip()
-
+        python_code = response['choices'][0]['message']['content'].strip()
+        return python_code
     except Exception as e:
         return f"Error: {str(e)}"
 
+# Function to execute the generated Python code
+def execute_python_code(code, df):
+    """
+    Executes the generated Python code to get the result.
+    """
+    try:
+        exec_globals = {"df": df}
+        exec(code, exec_globals)
+        result = exec_globals.get("result", "No result variable found.")
+        return result
+    except Exception as e:
+        return f"Execution Error: {str(e)}"
+
 # Streamlit UI
 st.title("📊 AI-Powered Order Insights")
-st.write("Ask a question about your order data, and I'll provide AI-generated insights!")
+st.write("Ask a question about your order data, and I'll provide AI-generated insights with step-by-step calculations!")
 
 user_query = st.text_input("Type your question here:", "")
 
 if st.button("Get Answer"):
     if user_query:
-        result = query_insights(user_query, df)
+        st.subheader("🔍 Understanding Your Question")
+        st.write(f"User Query: **{user_query}**")
+
+        # Generate Python code
+        python_code = generate_python_code(user_query, df)
+
+        st.subheader("📝 Generated Python Code")
+        st.code(python_code, language="python")
+
+        # Execute the generated code
+        result = execute_python_code(python_code, df)
+
+        st.subheader("📊 Calculation & Data Used")
+        st.write("Here is the data that was used to generate this response:")
+        st.write(df.head())
+
+        st.subheader("✅ Final Answer in Natural Language")
         st.write(result)
     else:
         st.write("Please enter a valid question.")
