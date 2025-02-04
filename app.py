@@ -33,19 +33,17 @@ def generate_python_code(user_query, df):
     Uses OpenAI API to convert the user query into a Python calculation.
     """
     context = f"""
-    You are a Python expert. Convert the following user query into a Python function
-    that can process the given order dataset.
-
-    Dataset Columns:
+    You are an expert Python developer. Convert the user's question into a Python function using Pandas.
+    The dataset contains the following columns:
     {', '.join(df.columns)}
 
     Sample Data:
-    {df.head(5).to_string()}
+    {df.head(3).to_string()}
 
     User Query:
     {user_query}
 
-    Output a Python function that calculates the answer based on Pandas.
+    Respond with ONLY executable Python code. Do not add explanations.
     """
     try:
         response = openai.ChatCompletion.create(
@@ -56,19 +54,29 @@ def generate_python_code(user_query, df):
             ]
         )
         python_code = response['choices'][0]['message']['content'].strip()
+
+        # Ensure only Python code is returned
+        if "```python" in python_code:
+            python_code = python_code.replace("```python", "").replace("```", "").strip()
+        
         return python_code
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error generating Python code: {str(e)}"
 
-# Function to execute the generated Python code
+# Function to safely execute Python code
 def execute_python_code(code, df):
     """
-    Executes the generated Python code to get the result.
+    Executes the AI-generated Python code safely.
     """
     try:
-        exec_globals = {"df": df}
-        exec(code, exec_globals)
-        result = exec_globals.get("result", "No result variable found.")
+        exec_globals = {"df": df, "pd": pd}
+        exec_locals = {}
+
+        # Execute the generated code
+        exec(code, exec_globals, exec_locals)
+
+        # Fetch the result variable
+        result = exec_locals.get("result", "No result variable found.")
         return result
     except Exception as e:
         return f"Execution Error: {str(e)}"
@@ -86,9 +94,6 @@ if st.button("Get Answer"):
 
         # Generate Python code
         python_code = generate_python_code(user_query, df)
-
-        st.subheader("📝 Generated Python Code")
-        st.code(python_code, language="python")
 
         # Execute the generated code
         result = execute_python_code(python_code, df)
